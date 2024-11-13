@@ -5,6 +5,7 @@ import fireworkVertexShader from "./shaders/firework/vertex.glsl";
 import fireworkFragmentShader from "./shaders/firework/fragment.glsl";
 import gsap from "gsap";
 import { Sky } from "three/addons/objects/Sky.js";
+import { Water } from "three/addons/objects/WaterMesh.js";
 
 /**
  * Base
@@ -202,19 +203,19 @@ window.addEventListener("click", createRandomFirework);
  */
 
 // Add Sky
-
+// Source: https://github.com/mrdoob/three.js/blob/master/examples/webgpu_ocean.html
 const sky = new Sky();
 sky.scale.setScalar(450000);
 scene.add(sky);
 
 const sun = new THREE.Vector3();
 
-const effectController = {
+const skyParameters = {
 	turbidity: 10,
 	rayleigh: 3,
 	mieCoefficient: 0.005,
 	mieDirectionalG: 0.7,
-	elevation: 2,
+	elevation: -2.3,
 	azimuth: 180,
 	exposure: renderer.toneMappingExposure,
 };
@@ -241,11 +242,31 @@ gui.add(skyParameters, "turbidity", 0.0, 20.0, 0.1).onChange(updateSky);
 gui.add(skyParameters, "rayleigh", 0.0, 4, 0.001).onChange(updateSky);
 gui.add(skyParameters, "mieCoefficient", 0.0, 0.1, 0.001).onChange(updateSky);
 gui.add(skyParameters, "mieDirectionalG", 0.0, 1, 0.001).onChange(updateSky);
-gui.add(skyParameters, "elevation", 0, 90, 0.1).onChange(updateSky);
+gui.add(skyParameters, "elevation", -3, 90, 0.01).onChange(updateSky);
 gui.add(skyParameters, "azimuth", -180, 180, 0.1).onChange(updateSky);
 gui.add(skyParameters, "exposure", 0, 1, 0.0001).onChange(updateSky);
 
 updateSky();
+
+/**
+ * Ocean
+ */
+const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
+const loader = new THREE.TextureLoader();
+const waterNormals = loader.load("textures/waternormals.jpg");
+waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping;
+
+water = new WaterMesh(waterGeometry, {
+	waterNormals: waterNormals,
+	sunDirection: new THREE.Vector3(),
+	sunColor: 0xffffff,
+	waterColor: 0x001e0f,
+	distortionScale: 3.7,
+});
+
+water.rotation.x = -Math.PI / 2;
+
+scene.add(water);
 
 /**
  * Animate
