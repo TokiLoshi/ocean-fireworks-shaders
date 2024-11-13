@@ -5,7 +5,7 @@ import fireworkVertexShader from "./shaders/firework/vertex.glsl";
 import fireworkFragmentShader from "./shaders/firework/fragment.glsl";
 import gsap from "gsap";
 import { Sky } from "three/addons/objects/Sky.js";
-import { Water } from "three/addons/objects/WaterMesh.js";
+import { Water } from "three/addons/objects/Water.js";
 
 /**
  * Base
@@ -62,9 +62,10 @@ const camera = new THREE.PerspectiveCamera(
 	25,
 	sizes.width / sizes.height,
 	0.1,
-	100
+	1000
 );
-camera.position.set(1.5, 0, 6);
+// camera.position.set(1.5, 0, 6);
+camera.position.set(10, 0, 75);
 scene.add(camera);
 
 // Controls
@@ -80,6 +81,8 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(sizes.pixelRatio);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.5;
 
 /**
  * Textures
@@ -183,14 +186,16 @@ createFirework(
 
 const createRandomFirework = () => {
 	const count = Math.round(400 + Math.random() * 1000);
+	const angle = Math.random() * Math.PI * 2;
 	const position = new THREE.Vector3(
-		Math.random() - 0.5 * 2,
-		Math.random(),
-		Math.random() - 0.5 * 2
+		(Math.random() - 0.5) * 20,
+		Math.random() * 20,
+		(Math.random() - 0.5) * 20
 	);
+	const radius = 0.5 + Math.random();
 	const size = 0.1 + Math.random() * 0.1;
 	const texture = textures[Math.floor(Math.random() * textures.length)];
-	const radius = 0.5 + Math.random();
+
 	const color = new THREE.Color();
 	color.setHSL(Math.random(), 1, 0.7);
 	createFirework(count, position, size, texture, radius, color);
@@ -238,35 +243,91 @@ function updateSky() {
 	renderer.render(scene, camera);
 }
 
-gui.add(skyParameters, "turbidity", 0.0, 20.0, 0.1).onChange(updateSky);
-gui.add(skyParameters, "rayleigh", 0.0, 4, 0.001).onChange(updateSky);
-gui.add(skyParameters, "mieCoefficient", 0.0, 0.1, 0.001).onChange(updateSky);
-gui.add(skyParameters, "mieDirectionalG", 0.0, 1, 0.001).onChange(updateSky);
-gui.add(skyParameters, "elevation", -3, 90, 0.01).onChange(updateSky);
-gui.add(skyParameters, "azimuth", -180, 180, 0.1).onChange(updateSky);
-gui.add(skyParameters, "exposure", 0, 1, 0.0001).onChange(updateSky);
+const skyFolder = gui.addFolder("Sky");
+skyFolder.add(skyParameters, "turbidity", 0.0, 20.0, 0.1).onChange(updateSky);
+skyFolder.add(skyParameters, "rayleigh", 0.0, 4, 0.001).onChange(updateSky);
+skyFolder
+	.add(skyParameters, "mieCoefficient", 0.0, 0.1, 0.001)
+	.onChange(updateSky);
+skyFolder
+	.add(skyParameters, "mieDirectionalG", 0.0, 1, 0.001)
+	.onChange(updateSky);
+skyFolder.add(skyParameters, "elevation", -3, 90, 0.01).onChange(updateSky);
+skyFolder.add(skyParameters, "azimuth", -180, 180, 0.1).onChange(updateSky);
+skyFolder.add(skyParameters, "exposure", 0, 1, 0.0001).onChange(updateSky);
 
 updateSky();
 
 /**
  * Ocean
  */
+//
+
+// based on webgupu_ocean from three.js examples: https://github.com/mrdoob/three.js/blob/master/examples/webgpu_ocean.html
 const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
 const loader = new THREE.TextureLoader();
 const waterNormals = loader.load("textures/waternormals.jpg");
 waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping;
 
-water = new WaterMesh(waterGeometry, {
-	waterNormals: waterNormals,
-	sunDirection: new THREE.Vector3(),
+const waterParameters = {
 	sunColor: 0xffffff,
 	waterColor: 0x001e0f,
 	distortionScale: 3.7,
+	size: 1.0,
+	alpha: 1.0,
+};
+
+const water = new Water(waterGeometry, {
+	textureWidth: 512,
+	textureHeight: 512,
+	waterNormals: waterNormals,
+	sunDirection: new THREE.Vector3(sun.x, sun.y, sun.z),
+	sunColor: waterParameters.sunColor,
+	waterColor: waterParameters.waterColor,
+	distortionScale: waterParameters.distortionScale,
+	fog: scene.fog !== undefined,
 });
 
 water.rotation.x = -Math.PI / 2;
-
+// TODO: Tweak to find the perfect value
+water.position.y = -3;
 scene.add(water);
+
+const updateWater = () => {
+	water.material.uniforms["sunDirection"].value.copy(sun);
+	water.material.uniforms["distortionScale"].value =
+		waterParameters.distortionScale;
+	water.material.uniforms["size"].value = waterParameters.size;
+	water.material.uniforms["sunColor"].value.setHex(waterParameters.sunColor);
+	water.material.uniforms["waterColor"].value.setHex(
+		waterParameters.waterColor
+	);
+};
+
+const waterFolder = gui.addFolder("Water");
+waterFolder
+	.add(waterParameters, "distortionScale", 0, 8, 0.1)
+	.name("Distortion Scale")
+	.onChange(updateWater);
+waterFolder
+	.add(waterParameters, "size", 0.1, 10, 0.1)
+	.name("Wave Size")
+	.onChange(updateWater);
+waterFolder
+	.add(waterParameters, "waterColor")
+	.name("Water Color")
+	.onChange((value) => {
+		waterParameters.waterColor = value;
+		updateWater();
+	});
+waterFolder
+	.add(waterParameters, "sunColor")
+	.name("Sun Color")
+	.onChange((value) => {
+		waterParameters.sunColor = value;
+		updateWater();
+	});
+waterFolder.open();
 
 /**
  * Animate
@@ -274,6 +335,7 @@ scene.add(water);
 const tick = () => {
 	// Update controls
 	controls.update();
+	water.material.uniforms["time"].value += Math.sin() * Math.random();
 
 	// Render
 	renderer.render(scene, camera);
