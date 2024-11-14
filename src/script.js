@@ -3,9 +3,10 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import GUI from "lil-gui";
 import fireworkVertexShader from "./shaders/firework/vertex.glsl";
 import fireworkFragmentShader from "./shaders/firework/fragment.glsl";
+import oceanVertexShader from "./shaders/ocean/vertex.glsl";
+import oceanFragmentShader from "./shaders/ocean/fragment.glsl";
 import gsap from "gsap";
 import { Sky } from "three/addons/objects/Sky.js";
-import { Water } from "three/addons/objects/Water.js";
 import Stats from "stats.js";
 
 /**
@@ -17,6 +18,7 @@ gui.close();
 
 // Canvas
 const canvas = document.querySelector("canvas.webgl");
+const debugObject = {};
 
 // Scene
 const scene = new THREE.Scene();
@@ -72,13 +74,13 @@ window.addEventListener("resize", () => {
  */
 // Base camera
 const camera = new THREE.PerspectiveCamera(
-	25,
+	75,
 	sizes.width / sizes.height,
 	0.1,
-	200
+	100
 );
 // camera.position.set(1.5, 0, 6);
-camera.position.set(10, 0, 75);
+camera.position.set(1, 1, 1);
 scene.add(camera);
 
 // Controls
@@ -286,90 +288,133 @@ skyFolder.add(skyParameters, "exposure", 0, 1, 0.0001).onChange(updateSky);
 updateSky();
 
 /**
- * Ocean
+ * Water
  */
 //
+const waterGeometry = new THREE.PlaneGeometry(2, 2, 512, 512);
 
-// based on webgupu_ocean from three.js examples: https://github.com/mrdoob/three.js/blob/master/examples/webgpu_ocean.html
-const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
-const loader = new THREE.TextureLoader();
-const waterNormals = loader.load("textures/waternormals.jpg");
-waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping;
+// Water color
+debugObject.depthColor = "#186691";
+debugObject.surfaceColor = "#9bd8ff";
 
-const waterParameters = {
-	sunColor: 0xffffff,
-	waterColor: 0x001e0f,
-	distortionScale: 3.7,
-	size: 1.0,
-	alpha: 1.0,
-};
+const waterMaterial = new THREE.ShaderMaterial({
+	vertexShader: oceanVertexShader,
+	fragmentShader: oceanFragmentShader,
+	// wireframe: true,
+	uniforms: {
+		uTime: { value: 0 },
 
-const water = new Water(waterGeometry, {
-	textureWidth: 512,
-	textureHeight: 512,
-	waterNormals: waterNormals,
-	sunDirection: new THREE.Vector3(sun.x, sun.y, sun.z),
-	sunColor: waterParameters.sunColor,
-	waterColor: waterParameters.waterColor,
-	distortionScale: waterParameters.distortionScale,
-	fog: scene.fog !== undefined,
+		uBigWavesElevation: { value: 0.2 },
+		uBigWavesFrequency: { value: new THREE.Vector2(4, 1.5) },
+		uBigWavesSpeed: { value: 0.75 },
+
+		uSmallWavesElevation: { value: 0.15 },
+		uSmallWavesFrequency: { value: 3 },
+		uSmallWavesSpeed: { value: 0.2 },
+		uSmallWavesIterations: { value: 4 },
+
+		uDepthColor: { value: new THREE.Color(debugObject.depthColor) },
+		uSurfaceColor: { value: new THREE.Color(debugObject.surfaceColor) },
+		uColorOffset: { value: 0.08 },
+		uColorMultiplier: { value: 5 },
+	},
 });
-
-water.rotation.x = -Math.PI / 2;
-// TODO: Tweak to find the perfect value
-water.position.y = -3;
+const water = new THREE.Mesh(waterGeometry, waterMaterial);
+water.rotation.x = Math.PI * -0.5;
 scene.add(water);
 
-const updateWater = () => {
-	water.material.uniforms["sunDirection"].value.copy(sun);
-	water.material.uniforms["distortionScale"].value =
-		waterParameters.distortionScale;
-	water.material.uniforms["size"].value = waterParameters.size;
-	water.material.uniforms["sunColor"].value.setHex(waterParameters.sunColor);
-	water.material.uniforms["waterColor"].value.setHex(
-		waterParameters.waterColor
-	);
-};
-
-const waterFolder = gui.addFolder("Water");
+const waterFolder = gui.addFolder("Ocean");
 waterFolder
-	.add(waterParameters, "distortionScale", 0, 8, 0.1)
-	.name("Distortion Scale")
-	.onChange(updateWater);
+	.add(waterMaterial.uniforms.uBigWavesElevation, "value")
+	.min(0)
+	.max(1)
+	.step(0.001)
+	.name("uBigWavesElevation");
 waterFolder
-	.add(waterParameters, "size", 0.1, 10, 0.1)
-	.name("Wave Size")
-	.onChange(updateWater);
+	.add(waterMaterial.uniforms.uBigWavesFrequency.value, "x")
+	.min(0)
+	.max(1)
+	.step(0.001)
+	.name("uBigWavesFrequencyX");
 waterFolder
-	.add(waterParameters, "waterColor")
-	.name("Water Color")
-	.onChange((value) => {
-		waterParameters.waterColor = value;
-		updateWater();
+	.add(waterMaterial.uniforms.uBigWavesFrequency.value, "y")
+	.min(0)
+	.max(10)
+	.step(0.001)
+	.name("uBigWavesFrequencyY");
+waterFolder
+	.add(waterMaterial.uniforms.uBigWavesSpeed, "value")
+	.min(0)
+	.max(4)
+	.step(0.001)
+	.name("uBigWavesSpeed");
+waterFolder
+	.addColor(debugObject, "depthColor")
+	.name("depthColor")
+	.onChange(() => {
+		waterMaterial.uniforms.uDepthColor.value.set(debugObject.depthColor);
 	});
 waterFolder
-	.add(waterParameters, "sunColor")
-	.name("Sun Color")
-	.onChange((value) => {
-		waterParameters.sunColor = value;
-		updateWater();
+	.addColor(debugObject, "surfaceColor")
+	.name("surfaceColor")
+	.onChange(() => {
+		waterMaterial.uniforms.uSurfaceColor.value.set(debugObject.surfaceColor);
 	});
+waterFolder
+	.add(waterMaterial.uniforms.uColorOffset, "value")
+	.min(0)
+	.max(1)
+	.step(0.1)
+	.name("uColorOffset");
+waterFolder
+	.add(waterMaterial.uniforms.uColorMultiplier, "value")
+	.min(0)
+	.max(10)
+	.step(0.1)
+	.name("uColorMultiplier");
+waterFolder
+	.add(waterMaterial.uniforms.uSmallWavesElevation, "value")
+	.min(0)
+	.max(1)
+	.step(0.001)
+	.name("uSmallWavesElevation");
+waterFolder
+	.add(waterMaterial.uniforms.uSmallWavesFrequency, "value")
+	.min(0)
+	.max(30)
+	.step(0.001)
+	.name("uSmallWavesElevation");
+waterFolder
+	.add(waterMaterial.uniforms.uSmallWavesSpeed, "value")
+	.min(0)
+	.max(4)
+	.step(0.001)
+	.name("uSmallWavesSpeed");
+waterFolder
+	.add(waterMaterial.uniforms.uSmallWavesIterations, "value")
+	.min(0)
+	.max(5)
+	.step(1)
+	.name("uSmallWavesIterations");
 
 /**
  * Animate
  */
+const clock = new THREE.Clock();
+
 const tick = () => {
 	// Update controls
+	const elapsedTime = clock.getElapsedTime();
 	stats.begin();
 	controls.update();
-	water.material.uniforms["time"].value += Math.sin() * Math.random();
+
+	waterMaterial.uniforms.uTime.value = elapsedTime;
 
 	// Render
 	renderer.render(scene, camera);
-
+	stats.end();
 	// Call tick again on the next frame
 	window.requestAnimationFrame(tick);
-	stats.end();
 };
 
 tick();
