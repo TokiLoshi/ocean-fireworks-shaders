@@ -6,12 +6,14 @@ import fireworkFragmentShader from "./shaders/firework/fragment.glsl";
 import gsap from "gsap";
 import { Sky } from "three/addons/objects/Sky.js";
 import { Water } from "three/addons/objects/Water.js";
+import Stats from "stats.js";
 
 /**
  * Base
  */
 // Debug
-const gui = new GUI({ width: 340 });
+const gui = new GUI({ width: 340, closeFolders: true });
+gui.close();
 
 // Canvas
 const canvas = document.querySelector("canvas.webgl");
@@ -21,6 +23,17 @@ const scene = new THREE.Scene();
 
 // Loaders
 const textureLoader = new THREE.TextureLoader();
+
+/**
+ * Performances
+ */
+//TODO: unlock the frame rate at 70/80ffs
+// https://gist.github.com/brunosimon/c15e7451a802fa8e34c0678620022f7d
+// check the draw calls
+// Review this lesson on performances for shadows: https://threejs-journey.com/lessons/performance-tips#32-specify-the-precision
+const stats = new Stats();
+stats.showPanel(0);
+document.body.appendChild(stats.dom);
 
 /**
  * Sizes
@@ -62,7 +75,7 @@ const camera = new THREE.PerspectiveCamera(
 	25,
 	sizes.width / sizes.height,
 	0.1,
-	1000
+	200
 );
 // camera.position.set(1.5, 0, 6);
 camera.position.set(10, 0, 75);
@@ -77,12 +90,26 @@ controls.enableDamping = true;
  */
 const renderer = new THREE.WebGLRenderer({
 	canvas: canvas,
-	antialias: true,
+	// antialias: true,
 });
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(sizes.pixelRatio);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.5;
+
+const renderFolder = gui.addFolder("Renderer");
+renderFolder.add(renderer, "toneMapping", {
+	No: THREE.NoToneMapping,
+	Linear: THREE.LinearToneMapping,
+	Reinhard: THREE.ReinhardToneMapping,
+	ACESFilmic: THREE.ACESFilmicToneMapping,
+});
+renderFolder
+	.add(renderer, "toneMappingExposure")
+	.min(0)
+	.max(10)
+	.step(0.001)
+	.name("tone exposure");
 
 /**
  * Textures
@@ -327,13 +354,13 @@ waterFolder
 		waterParameters.sunColor = value;
 		updateWater();
 	});
-waterFolder.open();
 
 /**
  * Animate
  */
 const tick = () => {
 	// Update controls
+	stats.begin();
 	controls.update();
 	water.material.uniforms["time"].value += Math.sin() * Math.random();
 
@@ -342,6 +369,7 @@ const tick = () => {
 
 	// Call tick again on the next frame
 	window.requestAnimationFrame(tick);
+	stats.end();
 };
 
 tick();
