@@ -203,7 +203,7 @@ const textures = [
  */
 const createFirework = (count, position, size, texture, radius, color) => {
 	// Positions
-	console.log("creating firework with positions: ", position);
+	// console.log("creating firework with positions: ", position);
 	const positionsArray = new Float32Array(count * 3);
 	const sizesArray = new Float32Array(count);
 	const timeMultipliersArray = new Float32Array(count);
@@ -263,7 +263,7 @@ const createFirework = (count, position, size, texture, radius, color) => {
 	firework.position.copy(position);
 	scene.add(firework);
 	const destroy = () => {
-		console.log("destroy");
+		// console.log("destroy");
 		scene.remove(firework);
 		geometry.dispose();
 		material.dispose();
@@ -278,7 +278,7 @@ const createFirework = (count, position, size, texture, radius, color) => {
 const randomTexture = Math.floor(Math.random() * textures.length);
 createFirework(
 	100, // Count
-	new THREE.Vector3(0, 1, -10), // Position
+	new THREE.Vector3(0, 1, -15), // Position
 	0.5, // Size
 	textures[randomTexture], // Texture
 	1, // Radius
@@ -307,10 +307,10 @@ const createRandomFirework = () => {
 window.addEventListener("click", (event) => {
 	const mouseX = event.clientX / window.innerWidth;
 	const mouseY = 1 - event.clientY / window.innerHeight;
-	console.log(`Mouse x: ${mouseX} mouse y: ${mouseY}`);
+	// console.log(`Mouse x: ${mouseX} mouse y: ${mouseY}`);
 	const position = new THREE.Vector3((mouseX - 0.5) * 10, mouseY * 2, -15);
 
-	console.log("New postion: ", position);
+	// console.log("New postion: ", position);
 	createFirework(
 		Math.round(400 + Math.random() * 1000), // Count
 		position,
