@@ -86,8 +86,8 @@ camera.position.set(0.2, 0.1, 1.7);
 scene.add(camera);
 
 // Debugger
-const cameraHelper = new THREE.CameraHelper(camera);
-scene.add(cameraHelper);
+// const cameraHelper = new THREE.CameraHelper(camera);
+// scene.add(cameraHelper);
 
 const cameraFolder = gui.addFolder("Camera");
 cameraFolder
@@ -203,6 +203,7 @@ const textures = [
  */
 const createFirework = (count, position, size, texture, radius, color) => {
 	// Positions
+	console.log("creating firework with positions: ", position);
 	const positionsArray = new Float32Array(count * 3);
 	const sizesArray = new Float32Array(count);
 	const timeMultipliersArray = new Float32Array(count);
@@ -274,25 +275,27 @@ const createFirework = (count, position, size, texture, radius, color) => {
 		onComplete: destroy,
 	});
 };
-
+const randomTexture = Math.floor(Math.random() * textures.length);
 createFirework(
 	100, // Count
-	new THREE.Vector3(), // Position
+	new THREE.Vector3(0, 1, -10), // Position
 	0.5, // Size
-	textures[7], // Texture
+	textures[randomTexture], // Texture
 	1, // Radius
-	new THREE.Color("#8affff") // Color
+	new THREE.Color("#a85ce6")
+	// new THREE.Color("#8affff") // Color
 );
 
 const createRandomFirework = () => {
 	const count = Math.round(400 + Math.random() * 1000);
 	const angle = Math.random() * Math.PI * 2;
+	const distance = camera.position.z;
 	const position = new THREE.Vector3(
 		(Math.random() - 0.5) * 20,
-		Math.random() * 20,
-		(Math.random() - 0.5) * 20
+		Math.random() * 8,
+		-15 + (Math.random() - 0.5) * 10
 	);
-	const radius = 0.5 + Math.random();
+	const radius = 0.7 + Math.random();
 	const size = 0.1 + Math.random() * 0.1;
 	const texture = textures[Math.floor(Math.random() * textures.length)];
 
@@ -301,7 +304,22 @@ const createRandomFirework = () => {
 	createFirework(count, position, size, texture, radius, color);
 };
 
-window.addEventListener("click", createRandomFirework);
+window.addEventListener("click", (event) => {
+	const mouseX = event.clientX / window.innerWidth;
+	const mouseY = 1 - event.clientY / window.innerHeight;
+	console.log(`Mouse x: ${mouseX} mouse y: ${mouseY}`);
+	const position = new THREE.Vector3((mouseX - 0.5) * 10, mouseY * 2, -15);
+
+	console.log("New postion: ", position);
+	createFirework(
+		Math.round(400 + Math.random() * 1000), // Count
+		position,
+		0.1 + Math.random() * 0.1, // Size
+		textures[Math.floor(Math.random() * textures.length)],
+		0.7 + Math.random(),
+		new THREE.Color().setHSL(Math.random(), 1, 0.7)
+	);
+});
 
 /**
  * Sky
@@ -471,6 +489,18 @@ waterFolder
 	.max(5)
 	.step(1)
 	.name("uSmallWavesIterations");
+
+const FIREWORK_INTERVAL = 2000;
+setInterval(() => {
+	createRandomFirework();
+}, FIREWORK_INTERVAL);
+
+const createRandomIntervalFirework = () => {
+	createRandomFirework();
+	const randomDelay = FIREWORK_INTERVAL + (Math.random() - 0.5) * 5000;
+	setTimeout(createRandomIntervalFirework, randomDelay);
+};
+createRandomIntervalFirework();
 
 /**
  * Animate
