@@ -72,20 +72,91 @@ window.addEventListener("resize", () => {
 /**
  * Camera
  */
+
 // Base camera
 const camera = new THREE.PerspectiveCamera(
-	75,
-	sizes.width / sizes.height,
-	0.1,
-	100
+	45, // field of view (degrees) vertical
+	sizes.width / sizes.height, // aspect ratio
+	0.1, // near
+	100 // far
 );
 // camera.position.set(1.5, 0, 6);
-camera.position.set(1, 1, 1);
+// camera x, y, z
+camera.position.set(0.2, 0.1, 1.7);
 scene.add(camera);
+
+// Debugger
+const cameraHelper = new THREE.CameraHelper(camera);
+scene.add(cameraHelper);
+
+const cameraFolder = gui.addFolder("Camera");
+cameraFolder
+	.add(camera.position, "x")
+	.min(-10)
+	.max(10)
+	.step(0.1)
+	.name("cameraX");
+cameraFolder.add(camera.position, "y").min(0).max(10).step(0.1).name("cameraY");
+cameraFolder
+	.add(camera.position, "z")
+	.min(-10)
+	.max(10)
+	.step(0.1)
+	.name("cameraZ");
 
 // Controls
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+// Prevent user from going under water and looking too high up
+controls.minPolarAngle = Math.PI * 0.4;
+controls.maxPolarAngle = Math.PI * 0.55;
+controls.minDistance = 0.5;
+controls.maxDistance = 2;
+controls.update();
+
+const controlsFolder = gui.addFolder("Orbit Controls");
+controlsFolder.add(controls, "enableDamping").name("damping");
+controlsFolder
+	.add(controls, "dampingFactor")
+	.min(0)
+	.max(5)
+	.step(0.1)
+	.name("dampingFactor");
+controlsFolder
+	.add(controls, "minPolarAngle")
+	.min(-2)
+	.max(Math.PI)
+	.step(0.01)
+	.name("minPolarAngle")
+	.onChange((value) => {
+		console.log(
+			`Min Polar Angle: ${((value * 180) / Math.PI).toFixed(2)} degrees`
+		);
+	});
+controlsFolder
+	.add(controls, "maxPolarAngle")
+	.min(0)
+	.max(Math.PI)
+	.step(0.1)
+	.name("maxPolarAngle")
+	.onChange((value) => {
+		console.log(
+			`Max Polar Angle changed to : ${((value * 180) / Math.PI).toFixed(2)}`
+		);
+	});
+controlsFolder
+	.add(controls, "minDistance")
+	.min(0)
+	.max(10)
+	.step(0.1)
+	.name("minDistance");
+controlsFolder
+	.add(controls, "maxDistance")
+	.min(1)
+	.max(20)
+	.step(0.1)
+	.name("maxDistance");
 
 /**
  * Renderer
@@ -245,12 +316,12 @@ scene.add(sky);
 const sun = new THREE.Vector3();
 
 const skyParameters = {
-	turbidity: 10,
-	rayleigh: 3,
-	mieCoefficient: 0.005,
-	mieDirectionalG: 0.7,
-	elevation: -2.3,
-	azimuth: 180,
+	turbidity: 8.4,
+	rayleigh: 1.01,
+	mieCoefficient: 0.048,
+	mieDirectionalG: 0.662,
+	elevation: -1.85,
+	azimuth: -167.2,
 	exposure: renderer.toneMappingExposure,
 };
 
@@ -291,11 +362,13 @@ updateSky();
  * Water
  */
 //
-const waterGeometry = new THREE.PlaneGeometry(2, 2, 512, 512);
+const waterGeometry = new THREE.PlaneGeometry(4, 4, 512, 512);
 
 // Water color
-debugObject.depthColor = "#186691";
-debugObject.surfaceColor = "#9bd8ff";
+// debugObject.depthColor = "#186691";
+// debugObject.surfaceColor = "#9bd8ff";
+debugObject.depthColor = "#2188c0";
+debugObject.surfaceColor = "#e8cea1";
 
 const waterMaterial = new THREE.ShaderMaterial({
 	vertexShader: oceanVertexShader,
@@ -321,9 +394,11 @@ const waterMaterial = new THREE.ShaderMaterial({
 });
 const water = new THREE.Mesh(waterGeometry, waterMaterial);
 water.rotation.x = Math.PI * -0.5;
+water.position.y = -0.5;
 scene.add(water);
 
 const waterFolder = gui.addFolder("Ocean");
+
 waterFolder
 	.add(waterMaterial.uniforms.uBigWavesElevation, "value")
 	.min(0)
